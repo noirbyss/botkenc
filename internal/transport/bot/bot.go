@@ -9,7 +9,11 @@ import (
 	th "github.com/mymmrac/telego/telegohandler"
 )
 
-type Service interface{}
+type Service interface {
+	HasActiveSubscription(userID string) (bool, error)
+	UserIDByTelegramID(telegramID int64) (string, error)
+	UserBalance(userID string) (int, error) // TODO: поменять на float
+}
 
 type Bot struct {
 	bot     *telego.Bot
@@ -23,8 +27,6 @@ func New(ctx context.Context, service Service) (*Bot, error) {
 	if token == "" {
 		return nil, fmt.Errorf("env %s not init", envTelegramBotToken)
 	}
-
-	fmt.Println("STARTING WITH", token)
 
 	bot, err := telego.NewBot(
 		token,
@@ -71,7 +73,6 @@ func (b *Bot) registerHandlers(bh *th.BotHandler) {
 	// TODO:
 	// - Если b.StartHandler == nil - тогда bh.HandleMessage бросает панику.
 	// Нужно добавить обработку.
-
-	fmt.Println("_-------invoke register handlers")
 	bh.HandleMessage(b.startHandler, th.CommandEqual("start"))
+	bh.HandleCallbackQuery(b.mainHandler, th.CallbackDataEqual(string(mainMenu)))
 }
