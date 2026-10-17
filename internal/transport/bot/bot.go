@@ -24,6 +24,8 @@ func New(ctx context.Context, service Service) (*Bot, error) {
 		return nil, fmt.Errorf("env %s not init", envTelegramBotToken)
 	}
 
+	fmt.Println("STARTING WITH", token)
+
 	bot, err := telego.NewBot(
 		token,
 		telego.WithDefaultDebugLogger(),
@@ -69,5 +71,7 @@ func (b *Bot) registerHandlers(bh *th.BotHandler) {
 	// TODO:
 	// - Если b.StartHandler == nil - тогда bh.HandleMessage бросает панику.
 	// Нужно добавить обработку.
-	bh.HandleMessage(b.StartHandler, th.CommandEqual("/start"))
+
+	fmt.Println("_-------invoke register handlers")
+	bh.HandleMessage(b.startHandler, th.CommandEqual("start"))
 }
