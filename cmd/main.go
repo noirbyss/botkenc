@@ -1,32 +1,28 @@
 package main
 
 import (
-	"context"
-
-	"github.com/noirbyss/botkenc/internal/transport/bot"
+	"fmt"
+	"strings"
 )
 
-type Service struct{}
-
-func (s Service) HasActiveSubscription(userID string) (bool, error) {
-	return false, nil
-}
-
-func (s Service) UserIDByTelegramID(telegramID int64) (string, error) {
-	return "1", nil
-}
-
-func (s Service) UserBalance(userID string) (int, error) {
-	return 100, nil
-}
-
 func main() {
-	bot, err := bot.New(context.Background(), Service{})
-	if err != nil {
-		panic(err)
+	callback1 := "main(one_device)"
+	callback2 := "main"
+
+	menu1, callbackOne := parseCallback(callback1)
+	menu2, callbackTwo := parseCallback(callback2)
+
+	fmt.Printf("%s:\nmenu:%s\nargs:%s\n\n\n%s:menu:%s\nargs:%v", callback1, menu1, *callbackOne, callback2, menu2, callbackTwo)
+}
+
+func parseCallback(s string) (string, *string) {
+	hasArgs := strings.IndexByte(s, '(')
+
+	if hasArgs == -1 {
+		return s, nil
 	}
 
-	if err := bot.Start(context.Background()); err != nil {
-		panic(err)
-	}
+	menu := s[:hasArgs]
+	args := s[hasArgs+1 : len(s)-1]
+	return menu, &args
 }

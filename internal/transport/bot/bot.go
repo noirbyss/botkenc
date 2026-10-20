@@ -7,20 +7,20 @@ import (
 
 	"github.com/mymmrac/telego"
 	th "github.com/mymmrac/telego/telegohandler"
+	tu "github.com/mymmrac/telego/telegoutil"
+	"github.com/noirbyss/botkenc/internal/domain"
 )
 
 type Service interface {
-	HasActiveSubscription(userID string) (bool, error)
-	UserIDByTelegramID(telegramID int64) (string, error)
-	UserBalance(userID string) (int, error) // TODO: поменять на float
+	Menu(tgID int64, screeID domain.ScreenID, args *string) (domain.Menu, error)
 }
 
 type Bot struct {
 	bot     *telego.Bot
-	service Service
+	backend Service
 }
 
-func New(ctx context.Context, service Service) (*Bot, error) {
+func New(ctx context.Context, backend Service) (*Bot, error) {
 	const envTelegramBotToken = "TELEGRAM_BOT_TOKEN"
 
 	token := os.Getenv(envTelegramBotToken)
@@ -39,7 +39,7 @@ func New(ctx context.Context, service Service) (*Bot, error) {
 
 	return &Bot{
 		bot:     bot,
-		service: service,
+		backend: backend,
 	}, nil
 }
 
@@ -73,6 +73,42 @@ func (b *Bot) registerHandlers(bh *th.BotHandler) {
 	// TODO:
 	// - Если b.StartHandler == nil - тогда bh.HandleMessage бросает панику.
 	// Нужно добавить обработку.
-	bh.HandleMessage(b.startHandler, th.CommandEqual("start"))
-	bh.HandleCallbackQuery(b.mainHandler, th.CallbackDataEqual(string(mainMenu)))
+	bh.HandleMessage(b.startMessageHandler, th.CommandEqual("start"))
+	bh.HandleCallbackQuery(b.callbackHandler, th.AnyCallbackQuery())
+}
+
+func (b *Bot) displayMenu(
+	ctx context.Context,
+	menu domain.Menu,
+	tgUID int64,
+	messageID *int,
+) error {
+	if menu.ID == domain.StartMenu {
+		_, err := b.bot.SendMessage(
+			ctx,
+			tu.Message(
+				tu.ID(tgUID),
+				menu.TextMessage,
+			).WithReplyMarkup(menu.InlineKeyboard).WithParseMode(telego.ModeMarkdownV2),
+		)
+
+		if err != nil {
+			return fmt.Errorf("send message error: %w", err)
+		}
+	}
+
+	_, err := b.bot.EditMessageText(
+		ctx,
+		tu.EditMessageText(
+			tu.ID(tgUID),
+			*messageID,
+			menu.TextMessage,
+		).WithReplyMarkup(menu.InlineKeyboard).WithParseMode(telego.ModeMarkdownV2),
+	)
+
+	if err != nil {
+		return fmt.Errorf("edit message error: %w", err)
+	}
+
+	return nil
 }

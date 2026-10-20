@@ -3,151 +3,66 @@ package bot
 import (
 	"errors"
 	"fmt"
-	"strconv"
+	"strings"
 
 	"github.com/mymmrac/telego"
 	th "github.com/mymmrac/telego/telegohandler"
-	tu "github.com/mymmrac/telego/telegoutil"
+	"github.com/noirbyss/botkenc/internal/domain"
 )
 
 var (
-	ErrBackend   = errors.New("backend error")
-	ErrRouteMenu = errors.New("route menu error")
+	ErrGetMenu     = errors.New("get menu error")
+	ErrDisplayMenu = errors.New("display menu")
 )
 
-// В хендлере собираем нужные данные и направляем на роутинг.
-func (b *Bot) startHandler(ctx *th.Context, msg telego.Message) error {
-	message := `
-	👋 Привет\! Это *\[Название\]* — VPN, который работает *даже при белых списках*\.
-	
-	Когда мобильный интернет ограничен и открываются только _«разрешённые»_ сайты, мы помогаем вернуть доступ *ко всему остальному*\.
-
-	⚡ *Быстрое подключение* за пару минут
-	📱 *iPhone, Android, Windows, macOS*
-	🔒 *Без логов* и лишних данных
-
-	Нажми *«Начать»*, чтобы продолжить 👇
-	`
-
-	inlineKeyboard := tu.InlineKeyboard(
-		tu.InlineKeyboardRow(
-			tu.InlineKeyboardButton("Начать").WithCallbackData(string(mainMenu)),
-		),
+func (b *Bot) startMessageHandler(ctx *th.Context, msg telego.Message) error {
+	var (
+		tgUID    = msg.From.ID
+		screenID = domain.StartScreen
 	)
 
-	menu := Menu{
-		id:             startMenu,
-		text:           message,
-		inlineKeyboard: inlineKeyboard,
-		chatID:         tu.ID(msg.From.ID),
+	menu, err := b.backend.Menu(tgUID, screenID, nil)
+	if err != nil {
+		return fmt.Errorf("%w %w", ErrGetMenu, err)
 	}
 
-	if err := b.routeMenu(ctx.Context(), menu); err != nil {
-		return fmt.Errorf("%w: %w", ErrRouteMenu, err)
+	if err := b.displayMenu(ctx.Context(), menu, tgUID, nil); err != nil {
+		return fmt.Errorf("%w: %w", ErrDisplayMenu, err)
 	}
 
 	return nil
 }
 
-func (b *Bot) mainHandler(ctx *th.Context, query telego.CallbackQuery) error {
-	telegramUserID := query.From.ID
-
-	userID, err := b.service.UserIDByTelegramID(telegramUserID)
-	if err != nil {
-		return fmt.Errorf("%w: %w", ErrBackend, err)
-	}
-
-	hasActiveSubscription, err := b.service.HasActiveSubscription(userID)
-	if err != nil {
-		return fmt.Errorf("%w: %w", ErrBackend, err)
-	}
-
-	balance, err := b.service.UserBalance(userID)
-	if err != nil {
-		return fmt.Errorf("%w: %w", ErrBackend, err)
-	}
-
+func (b *Bot) callbackHandler(ctx *th.Context, query telego.CallbackQuery) error {
 	var (
-		message          string
-		inlineKeyboard   *telego.InlineKeyboardMarkup
-		mainRowsKeyboard = [][]telego.InlineKeyboardButton{
-			tu.InlineKeyboardRow(
-				tu.InlineKeyboardButton("Ввести промокод").WithCallbackData(string(promocodeMenu)),
-			),
-			tu.InlineKeyboardRow(
-				tu.InlineKeyboardButton("Партнерская программа").WithCallbackData(string(affiliateMenu)),
-			),
-			tu.InlineKeyboardRow(
-				tu.InlineKeyboardButton("Инструкции").WithCallbackData(string(instructionsMenu)),
-			),
-			tu.InlineKeyboardRow(
-				tu.InlineKeyboardButton("Поддержка").WithCallbackData(string(supportMenu)),
-			),
-		}
+		tgUID          = query.From.ID
+		messageID      = query.Message.GetMessageID()
+		screenID, args = parseCallbackData(query.Data)
 	)
-	if hasActiveSubscription {
-		message = fmt.Sprintf(
-			`
-			👋 *С возвращением в \[Название\]\!*
 
-			✅ Подписка *активна*, VPN готов к работе\.
-
-			🆔 ID: %s
-			💰 Баланс: %d ₽
-
-			👇 Выберите действие:
-			`,
-			userID,
-			balance,
-		)
-
-		rows := [][]telego.InlineKeyboardButton{
-			tu.InlineKeyboardRow(
-				tu.InlineKeyboardButton("Управление подпиской").WithCallbackData(string(subscriptionMenu)),
-			),
-		}
-
-		rows = append(rows, mainRowsKeyboard...)
-		inlineKeyboard = tu.InlineKeyboard(rows...)
-	} else {
-		message = fmt.Sprintf(
-			`
-👋 *Добро пожаловать в \[Название\]\!*
-
-⚠️ У вас пока *нет активной подписки*\. Оформите её, чтобы подключиться к VPN и пользоваться интернетом без ограничений\.
-
-🆔 ID: %s
-💰 Баланс: %s ₽
-
-👇 Выберите действие:
-			`,
-			userID,
-			strconv.Itoa(balance),
-		)
-
-		rows := [][]telego.InlineKeyboardButton{
-			tu.InlineKeyboardRow(
-				tu.InlineKeyboardButton("Купиить подписку").WithCallbackData(string(tarrifsMenu)),
-			),
-		}
-
-		rows = append(rows, mainRowsKeyboard...)
-		inlineKeyboard = tu.InlineKeyboard(rows...)
+	menu, err := b.backend.Menu(tgUID, screenID, args)
+	if err != nil {
+		return fmt.Errorf("%w %w", ErrGetMenu, err)
 	}
 
-	messageID := query.Message.GetMessageID()
-
-	menu := Menu{
-		id:             mainMenu,
-		text:           message,
-		inlineKeyboard: inlineKeyboard,
-		chatID:         tu.ID(telegramUserID),
-		messageID:      &messageID,
-	}
-
-	if err := b.routeMenu(ctx.Context(), menu); err != nil {
-		return fmt.Errorf("%w: %w", ErrRouteMenu, err)
+	if err := b.displayMenu(ctx.Context(), menu, tgUID, &messageID); err != nil {
+		return fmt.Errorf("%w: %w", ErrDisplayMenu, err)
 	}
 
 	return nil
+}
+
+func parseCallbackData(callbackData string) (domain.ScreenID, *string) {
+	i := strings.IndexByte(callbackData, '(')
+
+	if i == -1 {
+		return domain.ScreenID(callbackData), nil
+	}
+
+	var (
+		menu = callbackData[:i]
+		args = callbackData[i+1 : len(callbackData)-1]
+	)
+
+	return domain.ScreenID(menu), &args
 }
