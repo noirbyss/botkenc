@@ -8,18 +8,18 @@ import (
 	"github.com/noirbyss/botkenc/internal/domain"
 )
 
-func (b Service) parseDevicesMenu(ctx context.Context, telegramUserID int64) (*domain.Menu, error) {
-	uid, err := b.repository.UserIDByTelegramUserID(ctx, telegramUserID)
+func (s Service) renderDevicesScreen(ctx context.Context, telegramUserID int64) (*domain.Menu, error) {
+	uid, err := s.repository.UserIDByTelegramUserID(ctx, telegramUserID)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrGetUserID, err)
 	}
 
-	userDevices, err := b.repository.UserDevices(ctx, uid)
+	userDevices, err := s.repository.UserDevices(ctx, uid)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrGetUserDevices, err)
 	}
 
-	devicesLimit, err := b.repository.UserDevicesLimit(ctx, uid)
+	devicesLimit, err := s.repository.UserDevicesLimit(ctx, uid)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrGetUserDevicesLimit, err)
 	}
@@ -27,7 +27,7 @@ func (b Service) parseDevicesMenu(ctx context.Context, telegramUserID int64) (*d
 	var menuTemplate domain.MenuTemplate
 
 	if len(userDevices) == 0 {
-		menuTemplate, err = b.repository.Menu(ctx, domain.DevicesEmptyMenu)
+		menuTemplate, err = s.repository.Menu(ctx, domain.DevicesEmptyMenu)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %w", ErrGetMenuTemplate, err)
 		}
@@ -40,16 +40,16 @@ func (b Service) parseDevicesMenu(ctx context.Context, telegramUserID int64) (*d
 	}
 
 	if len(userDevices) >= devicesLimit {
-		menuTemplate, err = b.repository.Menu(ctx, domain.DevicesLimitMenu)
+		menuTemplate, err = s.repository.Menu(ctx, domain.DevicesLimitMenu)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %w", ErrGetMenuTemplate, err)
 		}
 
 		placeholderValues := make(map[string]string, 2)
-		placeholderValues[placeholderDevicesUsed] = strconv.Itoa(len(userDevices))
-		placeholderValues[placeholderDevicesLimit] = strconv.Itoa(devicesLimit)
+		placeholderValues[placeholderSubscribeDevicesUsed] = strconv.Itoa(len(userDevices))
+		placeholderValues[placeholderSubscribeDevicesLimit] = strconv.Itoa(devicesLimit)
 
-		menuTemplate.TextMessageTemplate = parseTextTemplate(menuTemplate.TextMessageTemplate, placeholderValues)
+		menuTemplate.ParseTextTemplate(placeholderValues)
 
 		return domain.NewMenu(
 			menuTemplate.ID,
@@ -69,13 +69,13 @@ func (b Service) parseDevicesMenu(ctx context.Context, telegramUserID int64) (*d
 		placeholderValues[placeholderDeviceNameWithIndex] = device.Name
 		placeholderValues[placeholderDeviceDateAdWithIndex] = device.DateAd.Format("02.01.2006")
 
-		menuTemplate.TextMessageTemplate = parseTextTemplate(menuTemplate.TextMessageTemplate, placeholderValues)
+		menuTemplate.ParseTextTemplate(placeholderValues)
 	}
 
-	placeholderValues[placeholderDevicesUsed] = strconv.Itoa(len(userDevices))
-	placeholderValues[placeholderDevicesLimit] = strconv.Itoa(devicesLimit)
+	placeholderValues[placeholderSubscribeDevicesUsed] = strconv.Itoa(len(userDevices))
+	placeholderValues[placeholderSubscribeDevicesLimit] = strconv.Itoa(devicesLimit)
 
-	menuTemplate.TextMessageTemplate = parseTextTemplate(menuTemplate.TextMessageTemplate, placeholderValues)
+	menuTemplate.ParseTextTemplate(placeholderValues)
 
 	return domain.NewMenu(
 		menuTemplate.ID,

@@ -53,6 +53,10 @@ func (b *Bot) callbackHandler(ctx *th.Context, query telego.CallbackQuery) error
 }
 
 func parseCallbackData(callbackData string) (domain.ScreenID, *string) {
+	if callbackData == string(domain.BackScreen) {
+		return domain.BackScreen, nil
+	}
+
 	i := strings.IndexByte(callbackData, '(')
 
 	if i == -1 {

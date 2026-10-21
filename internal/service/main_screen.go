@@ -8,18 +8,18 @@ import (
 	"github.com/noirbyss/botkenc/internal/domain"
 )
 
-func (b Service) parseMainMenu(ctx context.Context, telegramUserID int64) (*domain.Menu, error) {
-	uid, err := b.repository.UserIDByTelegramUserID(ctx, telegramUserID)
+func (s Service) renderMainScreen(ctx context.Context, telegramUserID int64) (*domain.Menu, error) {
+	uid, err := s.repository.UserIDByTelegramUserID(ctx, telegramUserID)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrGetUserID, err)
 	}
 
-	balance, err := b.repository.UserBalance(ctx, uid)
+	balance, err := s.repository.UserBalance(ctx, uid)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrGetUserBalance, err)
 	}
 
-	hasSubscribe, err := b.repository.HasActiveSubscribe(ctx, uid)
+	hasSubscribe, err := s.repository.HasActiveSubscribe(ctx, uid)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrSubscriptionCheck, err)
 	}
@@ -27,12 +27,12 @@ func (b Service) parseMainMenu(ctx context.Context, telegramUserID int64) (*doma
 	var menuTemplate domain.MenuTemplate
 
 	if hasSubscribe {
-		menuTemplate, err = b.repository.Menu(ctx, domain.MainMenuSubscribed)
+		menuTemplate, err = s.repository.Menu(ctx, domain.MainMenuSubscribed)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %w", ErrGetMenuTemplate, err)
 		}
 	} else {
-		menuTemplate, err = b.repository.Menu(ctx, domain.MainMenuUnsubscribed)
+		menuTemplate, err = s.repository.Menu(ctx, domain.MainMenuUnsubscribed)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %w", ErrGetMenuTemplate, err)
 		}
@@ -42,7 +42,7 @@ func (b Service) parseMainMenu(ctx context.Context, telegramUserID int64) (*doma
 	placeholderValues[placeholderUserID] = uid
 	placeholderValues[placeholderUserBalance] = strconv.Itoa(balance)
 
-	menuTemplate.TextMessageTemplate = parseTextTemplate(menuTemplate.TextMessageTemplate, placeholderValues)
+	menuTemplate.ParseTextTemplate(placeholderValues)
 
 	return domain.NewMenu(
 		menuTemplate.ID,

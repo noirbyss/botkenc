@@ -7,8 +7,8 @@ import (
 	"github.com/noirbyss/botkenc/internal/domain"
 )
 
-func (b Service) parseTariffsMenu(ctx context.Context) (*domain.Menu, error) {
-	menuTemplate, err := b.repository.Menu(ctx, domain.TariffsMenu)
+func (s Service) renderTariffsScreen(ctx context.Context) (*domain.Menu, error) {
+	menuTemplate, err := s.repository.Menu(ctx, domain.TariffsMenu)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrGetMenuTemplate, err)
 	}

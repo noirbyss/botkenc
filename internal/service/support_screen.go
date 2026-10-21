@@ -7,13 +7,13 @@ import (
 	"github.com/noirbyss/botkenc/internal/domain"
 )
 
-func (b Service) parseSupportMenu(ctx context.Context, telegramUserID int64) (*domain.Menu, error) {
-	uid, err := b.repository.UserIDByTelegramUserID(ctx, telegramUserID)
+func (s Service) renderSupportScreen(ctx context.Context, telegramUserID int64) (*domain.Menu, error) {
+	uid, err := s.repository.UserIDByTelegramUserID(ctx, telegramUserID)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrGetUserID, err)
 	}
 
-	menuTemplate, err := b.repository.Menu(ctx, domain.SupportMenu)
+	menuTemplate, err := s.repository.Menu(ctx, domain.SupportMenu)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrGetMenuTemplate, err)
 	}
@@ -21,7 +21,7 @@ func (b Service) parseSupportMenu(ctx context.Context, telegramUserID int64) (*d
 	placeholderValues := make(map[string]string, 1)
 	placeholderValues[placeholderUserID] = uid
 
-	menuTemplate.TextMessageTemplate = parseTextTemplate(menuTemplate.TextMessageTemplate, placeholderValues)
+	menuTemplate.ParseTextTemplate(placeholderValues)
 
 	return domain.NewMenu(
 		menuTemplate.ID,

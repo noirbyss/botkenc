@@ -8,27 +8,27 @@ import (
 	"github.com/noirbyss/botkenc/internal/domain"
 )
 
-func (b Service) parsePaymentsMethodMenu(
+func (s Service) renderPaymentsMethodScreen(
 	ctx context.Context,
 	telegramUserID int64,
 	productName string,
 ) (*domain.Menu, error) {
-	uid, err := b.repository.UserIDByTelegramUserID(ctx, telegramUserID)
+	uid, err := s.repository.UserIDByTelegramUserID(ctx, telegramUserID)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrGetUserID, err)
 	}
 
-	balance, err := b.repository.UserBalance(ctx, uid)
+	balance, err := s.repository.UserBalance(ctx, uid)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrGetUserBalance, err)
 	}
 
-	productPrice, err := b.repository.ProductPrice(ctx, productName)
+	productPrice, err := s.repository.ProductPrice(ctx, productName)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrGetProductPrice, err)
 	}
 
-	templateMenu, err := b.repository.Menu(ctx, domain.PaymentsMethodMenu)
+	templateMenu, err := s.repository.Menu(ctx, domain.PaymentsMethodMenu)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrGetMenuTemplate, err)
 	}
@@ -38,7 +38,7 @@ func (b Service) parsePaymentsMethodMenu(
 	placeholderValues[placeholderProductPrice] = strconv.Itoa(productPrice)
 	placeholderValues[placeholderUserBalance] = strconv.Itoa(balance)
 
-	templateMenu.TextMessageTemplate = parseTextTemplate(templateMenu.TextMessageTemplate, placeholderValues)
+	templateMenu.ParseTextTemplate(placeholderValues)
 
 	return domain.NewMenu(
 		templateMenu.ID,

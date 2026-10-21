@@ -8,18 +8,18 @@ import (
 	"github.com/noirbyss/botkenc/internal/domain"
 )
 
-func (b Service) parseSubscribeMenu(ctx context.Context, telegramUserID int64) (*domain.Menu, error) {
-	uid, err := b.repository.UserIDByTelegramUserID(ctx, telegramUserID)
+func (s Service) renderSubscribeScreen(ctx context.Context, telegramUserID int64) (*domain.Menu, error) {
+	uid, err := s.repository.UserIDByTelegramUserID(ctx, telegramUserID)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrGetUserID, err)
 	}
 
-	subscribeInfo, err := b.repository.Subscribe(ctx, uid)
+	subscribeInfo, err := s.repository.Subscribe(ctx, uid)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrGetSubscribeInfo, err)
 	}
 
-	menuTemplate, err := b.repository.Menu(ctx, domain.SubscribeMenu)
+	menuTemplate, err := s.repository.Menu(ctx, domain.SubscribeMenu)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrGetMenuTemplate, err)
 	}
@@ -30,7 +30,7 @@ func (b Service) parseSubscribeMenu(ctx context.Context, telegramUserID int64) (
 	placeholderValues[placeholderSubscribeDevicesLimit] = strconv.Itoa(subscribeInfo.DevicesLimit)
 	placeholderValues[placeholderSubscribeURL] = subscribeInfo.URLConnection
 
-	menuTemplate.TextMessageTemplate = parseTextTemplate(menuTemplate.TextMessageTemplate, placeholderValues)
+	menuTemplate.ParseTextTemplate(placeholderValues)
 
 	return domain.NewMenu(
 		menuTemplate.ID,

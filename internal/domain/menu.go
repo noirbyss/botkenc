@@ -1,6 +1,10 @@
 package domain
 
-import "github.com/mymmrac/telego"
+import (
+	"strings"
+
+	"github.com/mymmrac/telego"
+)
 
 const (
 	StartMenu            MenuID = "start"
@@ -29,10 +33,16 @@ const (
 	SubscribeScreen      ScreenID = "subscribe"
 	DevicesScreen        ScreenID = "devices"
 	BuyDeviceScreen      ScreenID = "buy_device"
+	BackScreen           ScreenID = "back"
 )
 
 type MenuID string
 type ScreenID string
+
+type ScreenRef struct {
+	ID   ScreenID
+	Args string
+}
 
 type Menu struct {
 	ID             MenuID
@@ -52,4 +62,14 @@ type MenuTemplate struct {
 	ID                  MenuID
 	TextMessageTemplate string
 	InlineKeyboard      *telego.InlineKeyboardMarkup
+}
+
+func (mt *MenuTemplate) ParseTextTemplate(placeholderValues map[string]string) {
+	pairs := make([]string, 0, len(placeholderValues)*2)
+
+	for template, replace := range placeholderValues {
+		pairs = append(pairs, "{+"+template+"}", replace)
+	}
+
+	mt.TextMessageTemplate = strings.NewReplacer(pairs...).Replace(mt.TextMessageTemplate)
 }
